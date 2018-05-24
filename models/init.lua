@@ -95,7 +95,7 @@ function M.setup(opt, checkpoint)
       model = dpt:type(opt.tensorType)
    end
 
-   local criterion = nn.CrossEntropyCriterion():type(opt.tensorType)
+   local criterion = nn.ClassNLLCriterion():type(opt.tensorType)
    return model, criterion
 end
 
