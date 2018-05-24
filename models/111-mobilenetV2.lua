@@ -156,17 +156,33 @@ local function createModel(opt)
     end
 
     model:apply(
-        function(m) if torch.typename(m):find('Convolution') and m.bias then m:noBias() end end)
+        function(m)
+            if torch.typename(m):find('Convolution') and m.bias then m:noBias() end
+            if torch.typename(m):find('Convolution') then
+                local std = 0.09
+                m.weight:apply(function()
+                    local retval = 3*std
+                    while math.abs(retval) > 2*std do
+                        retval = torch.normal(0, std)
+                    end
+                    return retval
+                end)
+            end
+            if torch.typename(m):find('BatchNorm') then m.momentum = 0.003 end
+        end)
 
     local outputStride = 32
     model:setOutputStride(outputStride)
 
-    model:add(cudnn.SpatialAveragePooling(7,7, 1,1))
+    if opt.dataset ~= 'cifar10' then
+        model:add(cudnn.SpatialAveragePooling(7,7, 1,1))
+    end
     model:add(nn.View(currentNPlanes):setNumInputDims(3))
     model:add(nn.Dropout(0.2))
     model:add(nn.Linear(currentNPlanes, 1000))
     model:add(cudnn.LogSoftMax())
 
+    model:type(opt.tensorType)
     model:get(1).gradInput = nil
     return model
 end

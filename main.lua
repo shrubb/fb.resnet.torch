@@ -47,6 +47,11 @@ end
 local startEpoch = checkpoint and checkpoint.epoch + 1 or opt.epochNumber
 local bestTop1 = math.huge
 local bestTop5 = math.huge
+local accLogger = optim.Logger(paths.concat(opt.save, 'accuracy.log'))
+accLogger:setNames{'Top 1, train', 'Top 1, val', 'Top 5, train', 'Top 5, val'}
+accLogger:style{'-', '-', '--', '--'}
+accLogger.showPlot = false
+
 for epoch = startEpoch, opt.nEpochs do
    -- Train for a single epoch
    local trainTop1, trainTop5, trainLoss = trainer:train(epoch, trainLoader)
@@ -61,6 +66,9 @@ for epoch = startEpoch, opt.nEpochs do
       bestTop5 = testTop5
       print(' * Best model ', testTop1, testTop5)
    end
+
+   accLogger:add{trainTop1, testTop1, trainTop5, testTop5}
+   accLogger:plot()
 
    checkpoints.save(epoch, model, trainer.optimState, bestModel, opt)
 end

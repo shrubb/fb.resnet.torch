@@ -23,6 +23,7 @@ function Trainer:__init(model, criterion, opt, optimState)
       momentum = opt.momentum,
       nesterov = true,
       dampening = 0.0,
+      alpha = opt.momentum, -- for RMSProp
       weightDecay = opt.weightDecay,
    }
    self.opt = opt
@@ -32,6 +33,7 @@ end
 function Trainer:train(epoch, dataloader)
    -- Trains the model for a single epoch
    self.optimState.learningRate = self:learningRate(epoch)
+   print('Setting learning rate to ' .. tostring(self.optimState.learningRate))
 
    local timer = torch.Timer()
    local dataTimer = torch.Timer()
@@ -61,7 +63,7 @@ function Trainer:train(epoch, dataloader)
       self.criterion:backward(self.model.output, self.target)
       self.model:backward(self.input, self.criterion.gradInput)
 
-      optim.sgd(feval, self.params, self.optimState)
+      optim[self.opt.optimizer](feval, self.params, self.optimState)
 
       local top1, top5 = self:computeScore(output, sample.target, 1)
       top1Sum = top1Sum + top1*batchSize
@@ -172,6 +174,10 @@ function Trainer:copyInputs(sample)
 end
 
 function Trainer:learningRate(epoch)
+   if self.opt.decayPerEpoch then
+      return self.opt.LR * math.pow(self.opt.decayPerEpoch, epoch-1)
+   end
+
    -- Training schedule
    local decay = 0
    if self.opt.dataset == 'imagenet' then
